@@ -111,7 +111,6 @@ let empty_constructor_builtin callee_repr =
    expands that DAG as a tree (see pp_nested_term) and dominates conversion time on large functions. *)
 let callee_name_depth = 6
 
-
 (* ---------- ASCII tree printer ---------- *)
 
 let pp_tree ?(depth = 32) cc fmt atom =
@@ -172,8 +171,8 @@ let rec convert_exp (env : Env.t) (exp : T.Exp.t) : CC.Atom.t =
       mk_term cc "@field" [convert_exp env inner_exp; mk_const cc field_name]
   | Index (e1, e2) ->
       mk_term cc "@index" [convert_exp env e1; convert_exp env e2]
-  | Call {proc; args}
-    when String.is_suffix (qualified_procname_to_string proc) ~suffix:"py_call" -> (
+  | Call {proc; args} when String.is_suffix (qualified_procname_to_string proc) ~suffix:"py_call"
+    -> (
       let generic () =
         mk_term cc (qualified_procname_to_string proc) (List.map args ~f:(convert_exp env))
       in
@@ -188,10 +187,10 @@ let rec convert_exp (env : Env.t) (exp : T.Exp.t) : CC.Atom.t =
              && (not (List.is_empty vals))
              && Int.equal (List.length kwnames) (List.length vals)
              && List.for_all kwnames ~f:(function
-                  | T.Exp.Call {proc= p} ->
-                      String.is_suffix (qualified_procname_to_string p) ~suffix:"py_make_string"
-                  | _ ->
-                      false )
+               | T.Exp.Call {proc= p} ->
+                   String.is_suffix (qualified_procname_to_string p) ~suffix:"py_make_string"
+               | _ ->
+                   false )
              && callee_is "dict" callee ->
           (* A keyword dict constructor dict(k1=v1, ..., kn=vn) is equivalent to the literal
              {k1: v1, ..., kn: vn}. It is compiled as py_call(dict, py_build_tuple(k1,...,kn),
@@ -208,17 +207,19 @@ let rec convert_exp (env : Env.t) (exp : T.Exp.t) : CC.Atom.t =
                    String.is_suffix (qualified_procname_to_string p) ~suffix:"py_make_none"
                | _ ->
                    false ) -> (
-          (* An empty container constructor call set()/dict()/list()/tuple() (no positional args, only
+        (* An empty container constructor call set()/dict()/list()/tuple() (no positional args, only
              an optional None kwargs placeholder). Canonicalise to the pure empty-container builtin,
              matching how the statement-level try_simplify_py_call handles the guard body. *)
-          match
-            empty_constructor_builtin
-              (F.asprintf "%a" (CC.pp_nested_term ~depth:callee_name_depth cc) (convert_exp env callee))
-          with
-          | Some builtin ->
-              mk_term cc builtin []
-          | None ->
-              generic () )
+        match
+          empty_constructor_builtin
+            (F.asprintf "%a"
+               (CC.pp_nested_term ~depth:callee_name_depth cc)
+               (convert_exp env callee) )
+        with
+        | Some builtin ->
+            mk_term cc builtin []
+        | None ->
+            generic () )
       | _ ->
           generic () )
   | Call {proc; args}
@@ -320,7 +321,7 @@ let try_simplify_py_call (env : Env.t) (args : T.Exp.t list) : CC.Atom.t option 
   match args with
   | Var callee_id :: _ -> (
     match Env.lookup_ident env callee_id with
-    | Some callee_atom ->
+    | Some callee_atom -> (
         (* Only the shallow callee name [(@str X)] matters here. Cap the print depth: a full print
            would exponentially expand the deep, hash-consed state-threading DAG carried by the
            callee (e.g. py_load_global's state argument), which dominates conversion time on large
@@ -331,7 +332,7 @@ let try_simplify_py_call (env : Env.t) (args : T.Exp.t list) : CC.Atom.t option 
           Some (mk_term env.cc "@enumerate" (List.map actual_args ~f:(convert_exp env)))
         else if List.is_empty actual_args then
           Option.map (empty_constructor_builtin s) ~f:(fun builtin -> mk_term env.cc builtin [])
-        else (
+        else
           (* A keyword dict constructor dict(k1=v1, ..., kn=vn) == the literal {k1: v1, ...}: it is
              py_call(dict, py_build_tuple(k1,...,kn), v1,...,vn). Model it as the same pure
              py_build_map the literal produces, so it matches whether the codemod keeps dict(...) or
@@ -342,10 +343,10 @@ let try_simplify_py_call (env : Env.t) (args : T.Exp.t list) : CC.Atom.t option 
                  && String.is_suffix (qualified_procname_to_string tproc) ~suffix:"py_build_tuple"
                  && Int.equal (List.length kwnames) (List.length vals)
                  && List.for_all kwnames ~f:(function
-                      | T.Exp.Call {proc= p} ->
-                          String.is_suffix (qualified_procname_to_string p) ~suffix:"py_make_string"
-                      | _ ->
-                          false ) ->
+                   | T.Exp.Call {proc= p} ->
+                       String.is_suffix (qualified_procname_to_string p) ~suffix:"py_make_string"
+                   | _ ->
+                       false ) ->
               let pairs =
                 List.concat_map (List.zip_exn kwnames vals) ~f:(fun (k, v) ->
                     [convert_exp env k; convert_exp env v] )
@@ -909,7 +910,9 @@ let extract_defaults (module_ : T.Module.t) (proc : T.ProcDesc.t) : T.Exp.t Stri
         let n = List.length params and k = List.length pos in
         if Int.equal k 0 || k > n then StringMap.empty
         else
-          List.fold2_exn (List.drop params (n - k)) pos ~init:StringMap.empty
+          List.fold2_exn
+            (List.drop params (n - k))
+            pos ~init:StringMap.empty
             ~f:(fun acc name d -> StringMap.add name d acc)
       in
       (* Keyword-only defaults are keyed by name (these params are not in [python_args], which lists

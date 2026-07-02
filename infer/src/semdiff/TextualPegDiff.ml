@@ -161,7 +161,8 @@ let bisimilar cc ~(theta_headers : CC.header list) a1 a2 =
   let rec check a1 a2 =
     let a1 = CC.representative cc a1 in
     let a2 = CC.representative cc a2 in
-    if CC.Atom.equal a1 a2 || BisimUF.is_equiv uf a1 a2 || AtomPairSet.mem (a1, a2) !proven then true
+    if CC.Atom.equal a1 a2 || BisimUF.is_equiv uf a1 a2 || AtomPairSet.mem (a1, a2) !proven then
+      true
     else
       let r =
         match (find_enode a1, find_enode a2) with
